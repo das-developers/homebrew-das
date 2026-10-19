@@ -90,10 +90,16 @@ class Das2c < Formula
         return 0;
       }
     C
-    system ENV.cc, "-std=c99", "test.c", "-I#{include}", "-L#{lib}", "-ldas3",
-           "-L#{formula_opt_lib("fftw")}", "-L#{formula_opt_lib("openssl@3")}",
-           "-lfftw3", "-lexpat", "-lssl", "-lcrypto", "-lz", "-lm", "-lpthread",
-           "-o", "test"
+    # On Linux expat and zlib are formula dependencies too, so take the
+    # search paths from whatever this platform's dependencies are.
+    dep_flags = deps.map(&:to_formula).flat_map do |f|
+      flags = ["-I#{f.opt_include}", "-L#{f.opt_lib}"]
+      flags << "-Wl,-rpath,#{f.opt_lib}" if OS.linux?
+      flags
+    end
+    system ENV.cc, "-std=c99", "test.c", "-I#{include}", *dep_flags,
+           "-L#{lib}", "-ldas3", "-lfftw3", "-lexpat", "-lssl", "-lcrypto",
+           "-lz", "-lm", "-lpthread", "-o", "test"
     assert_match "291", shell_output("./test")
 
     assert_match "das3_info", shell_output("#{bin}/das3_info --help 2>&1")
